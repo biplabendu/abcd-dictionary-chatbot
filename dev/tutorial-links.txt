@@ -1,0 +1,25 @@
+A. Original idea and goals https://docs.google.com/document/d/1g6zbnU7Abv0EyT78b2BvJZAsq32SNg3irRT-cV8_7OQ/edit?tab=t.0
+
+B. List of relevant tutorials / code for building similar chatbots:
+
+From Satra:
+- here is the semantic search notebook - this operates on a different csv, but can be adjusted easily to the description column of the deap csv.
+	- https://github.com/sensein/b2aiprep/blob/main/docs/semantic-search.ipynb
+- here is the original one on the abcd csv
+	- https://www.dropbox.com/scl/fi/wkrkr0dr3yiwzk2vec90o/semantic-search-abcd.ipynb?rlkey=qkuwsdt5jymnwb16gx3ygnzxx&dl=0
+- more links:
+	- https://github.com/ccnmaastricht/NeuroScape
+	
+From David:
+- A resource of potential interest: 
+	- https://github.com/magland/qp?tab=readme-ov-file
+	- A multi-tenant AI chat platform that hosts specialized AI assistants, each accessible via different subdomains. Built with React, TypeScript, and Vite on the frontend, with a Next.js API backend.
+	- EXAMPLE bots created using above repo:
+		- repronim: https://repronim-assistant.neurosift.app/chat
+		- bids: https://bids-assistant.neurosift.app/chat
+
+From Yaroslav (Yarik):
+- Yahya (of HED, BIDS etc fames) also created the following, have not yet compared that anyhow to Jeremy's qp effort:
+	- https://github.com/OpenScience-Collective/osa
+	
+
