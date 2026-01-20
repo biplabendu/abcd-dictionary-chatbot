@@ -21,5 +21,8 @@ From David:
 From Yaroslav (Yarik):
 - Yahya (of HED, BIDS etc fames) also created the following, have not yet compared that anyhow to Jeremy's qp effort:
 	- https://github.com/OpenScience-Collective/osa
+- video on open LMs: https://youtu.be/pfxgLX-MxMY
+
+
 	
 
