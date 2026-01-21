@@ -1,37 +1,40 @@
 import pandas as pd
+import numpy as np
 from sentence_transformers import SentenceTransformer, util
-import torch
+from scipy.spatial import distance as ssd
+from pathlib import Path
 
-# Global variables
-df = None
-model = None
-corpus_embeddings = None
 
-def initialize_backend(csv_path):
+def create_embeddings(text_list, batch_size=64):
+    # returns a numpy array by default
+    model = SentenceTransformer("sentence-transformers/all-MiniLM-L6-v2")
+    return model.encode(
+        text_list,
+        batch_size=batch_size,
+        normalize_embeddings=True,
+        show_progress_bar=True,
+    )
+
+def create_core_embeddings(csv_path, batch_size=64):
     """
     Loads the CSV and pre-computes embeddings for the 'label' column.
     """
-    global df, model, corpus_embeddings
+
     
     print(f"Initializing Python Backend with file: {csv_path}...")
     
     try:
         # 1. Load Data
         df = pd.read_csv(csv_path)
-        
-        # Ensure we search on strings
-        search_texts = df['label'].fillna("").astype(str).tolist()
-
-        # 2. Load Model
-        model = SentenceTransformer('all-MiniLM-L6-v2')
+        df = df.dropna(subset=["label"])
+        sentences = df['label'].values.tolist()
         
         # 3. Pre-compute embeddings
-        print("Generating embeddings... (this may take a moment)")
-        corpus_embeddings = model.encode(search_texts, convert_to_tensor=True)
-        print("Backend Ready.")
-        
+        embeddings = create_embeddings(sentences)
+        # Save embeddings to file
+        np.save("embeddings_minLLM_L6.npy", embeddings.astype("float32"))
     except Exception as e:
-        print(f"Error initializing backend: {e}")
+        print(f"Error creating embeddings: {e}")
         raise e
 
 def semantic_search(search_string, cutoff=0.2):
@@ -39,43 +42,34 @@ def semantic_search(search_string, cutoff=0.2):
     Simulates: sentences_sorted[sims > cutoff]
     Calculates similarity for ALL rows, filters by cutoff, and sorts.
     """
-    global df, model, corpus_embeddings
+
+    EMBEDDINGS_PATH = Path(__file__).resolve().parent.parent / "../../data/embeddings/embeddings_minLLM_L6.npy"
+    embeddings = np.load(EMBEDDINGS_PATH)
+
+    search_embeddings = create_embeddings([search_string,])
+ 
+    sims, sentences_sorted, sorted_index = sentence_search(embeddings, search_embeddings)
+ 
     
-    if df is None or model is None:
-        return pd.DataFrame()
+    return sentences_sorted[:20].tolist()
 
-    if not search_string or search_string.strip() == "":
-        return df.head(0)
 
-    # Encode user query
-    query_embedding = model.encode(search_string, convert_to_tensor=True)
+def sentence_search(embeddings, search_embedding):
+    # Compute cosine similarity scores for the search string to all other sentences
+    CSV_PATH = Path(__file__).resolve().parent.parent / "../../data/dd-abcd-6_0_minimal_noimag.csv"
+    df = pd.read_csv(CSV_PATH)
+    df = df.dropna(subset=["label"])
+    sentences = df['label'].values.tolist()
+    sims = []
+    for embedding in embeddings:
+        sims.append(1 - ssd.cosine(search_embedding[0], embedding))
+    # Sort sentences by similarity score in descending order (the most similar ones are first)
+    sorted_index = np.argsort(sims)[::-1]
+    sentences_sorted = np.array(sentences)[sorted_index]
+    sims = np.array(sims)[sorted_index]
+    return sims,  sentences_sorted, sorted_index
 
-    # Perform Cosine Similarity (Compare query to ALL corpus embeddings)
-    # Result is a tensor of shape (n_samples,)
-    sims = util.cos_sim(query_embedding, corpus_embeddings)[0]
 
-    # Convert to numpy for DataFrame operations
-    sims_np = sims.cpu().numpy()
-    
-    # Create a working copy to return
-    df_result = df.copy()
-    df_result['similarity'] = sims_np
-    
-    # FILTER: equivalent to sentences[sims > cutoff]
-    # We cast cutoff to float to ensure comparison works
-    df_filtered = df_result[df_result['similarity'] > float(cutoff)]
-    
-    # SORT: descending order
-    df_sorted = df_filtered.sort_values(by='similarity', ascending=False)
-    
-    return df_sorted
-
-def get_unique_values(col_name):
-    """
-    Helper to get unique values for UI filters.
-    """
-    global df
-    if df is not None and col_name in df.columns:
-        return df[col_name].dropna().unique().tolist()
-    return []
-
+if __name__ == "__main__":
+    sent = semantic_search("variables to compute body mass index")
+    print(sent)
