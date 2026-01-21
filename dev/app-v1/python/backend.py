@@ -43,7 +43,7 @@ def semantic_search(search_string, cutoff=0.2):
     Calculates similarity for ALL rows, filters by cutoff, and sorts.
     """
 
-    EMBEDDINGS_PATH = Path(__file__).resolve().parent.parent / "../../data/embeddings/embeddings_minLLM_L6.npy"
+    EMBEDDINGS_PATH = "/Users/bidas/Documents/GitHub/abcd-dictionary-chatbot/data/embeddings/embeddings_minLLM_L6.npy"
     embeddings = np.load(EMBEDDINGS_PATH)
 
     search_embeddings = create_embeddings([search_string,])
@@ -56,7 +56,7 @@ def semantic_search(search_string, cutoff=0.2):
 
 def sentence_search(embeddings, search_embedding):
     # Compute cosine similarity scores for the search string to all other sentences
-    CSV_PATH = Path(__file__).resolve().parent.parent / "../../data/dd-abcd-6_0_minimal_noimag.csv"
+    CSV_PATH = "/Users/bidas/Documents/GitHub/abcd-dictionary-chatbot/data/dd-abcd-6_0_minimal_noimag.csv"
     df = pd.read_csv(CSV_PATH)
     df = df.dropna(subset=["label"])
     sentences = df['label'].values.tolist()
@@ -70,6 +70,6 @@ def sentence_search(embeddings, search_embedding):
     return sims,  sentences_sorted, sorted_index
 
 
-if __name__ == "__main__":
-    sent = semantic_search("variables to compute body mass index")
-    print(sent)
+# if __name__ == "__main__":
+#     sent = semantic_search("variables to compute body mass index")
+#     print(sent)

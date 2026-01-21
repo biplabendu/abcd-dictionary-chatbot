@@ -23,11 +23,18 @@ if (!file.exists(csv_filename)) {
 # Get Absolute Path and Initialize
 abs_path <- tools::file_path_as_absolute(csv_filename)
 source_python("python/backend.py") # Load the script
-initialize_backend(abs_path)       # Run the init function
+res <- semantic_search("give variables of BMI")       # Run the init function
 
-# --- UI HELPERS ---
-unique_sources <- get_unique_values("source")
-unique_types   <- get_unique_values("type_var")
+# # --- UI HELPERS ---
+# unique_sources <- get_unique_values("source")
+# unique_types   <- get_unique_values("type_var")
+
+
+# load dictionary ---------------------------------------------------------
+
+dd <- read.csv(
+  csv_filename
+)
 
 # --- UI ---
 ui <- page_fillable(
@@ -43,7 +50,8 @@ ui <- page_fillable(
   title = "ABCD Semantic Search",
   
   layout_columns(
-    col_widths = c(3, 6, 3),
+    # col_widths = c(3, 6, 3),
+    col_widths = c(3, 9),
     fill = TRUE,
     
     # --- LEFT: SEARCH INPUT ---
@@ -83,20 +91,20 @@ ui <- page_fillable(
           )
         )
       )
-    ),
-    
-    # --- RIGHT: FILTERS ---
-    card(
-      card_header("Refine Results"),
-      div(
-        style = "overflow-y: auto; max-height: 80vh;", 
-        checkboxGroupInput("filter_source", "Filter by Source:",
-                           choices = unique_sources, selected = unique_sources),
-        hr(),
-        checkboxGroupInput("filter_type", "Filter by Type:",
-                           choices = unique_types, selected = unique_types)
-      )
     )
+    
+    # # --- RIGHT: FILTERS ---
+    # card(
+    #   card_header("Refine Results"),
+    #   div(
+    #     style = "overflow-y: auto; max-height: 80vh;", 
+    #     checkboxGroupInput("filter_source", "Filter by Source:",
+    #                        choices = unique_sources, selected = unique_sources),
+    #     hr(),
+    #     checkboxGroupInput("filter_type", "Filter by Type:",
+    #                        choices = unique_types, selected = unique_types)
+    #   )
+    # )
   )
 )
 
@@ -105,6 +113,7 @@ server <- function(input, output, session) {
   
   # Initialize with empty frame
   search_results <- reactiveVal(data.frame())
+  raw_vec = reactiveVal(NULL)
   
   observeEvent(input$run_search, {
     req(input$search_query)
@@ -115,15 +124,22 @@ server <- function(input, output, session) {
     tryCatch({
       # [UPDATED] Pass 'cutoff' instead of 'top_k'
       # Python returns a sorted DataFrame of all rows > cutoff
-      raw_df <- semantic_search(input$search_query, cutoff = input$cutoff)
+      
+      raw_vec(semantic_search(input$search_query))
+      # browser()
+      raw_df <- dd |> 
+        filter(
+          label %in% raw_vec()
+        )
+      
+      # raw_df <- semantic_search(input$search_query, cutoff = input$cutoff)
       
       if (!is.null(raw_df) && is.data.frame(raw_df)) {
-        search_results(raw_df)
-        
         # Optional: Warn if 0 results found
         if (nrow(raw_df) == 0) {
           showNotification("No matches found. Try lowering the Similarity Threshold.", type = "warning", duration = 5)
         }
+        search_results(raw_df)
       }
       
     }, error = function(e) {
@@ -132,33 +148,24 @@ server <- function(input, output, session) {
     })
   })
   
-  # Filter Logic
-  filtered_data <- reactive({
-    data <- search_results()
-    
-    if (is.null(data) || nrow(data) == 0) {
-      return(data.frame(Message = "No data found. Adjust your query or lower the threshold."))
-    }
-    
-    data %>%
-      filter(
-        source %in% input$filter_source,
-        type_var %in% input$filter_type
-      )
-  })
+
   
   # Output Table
   output$results_table <- renderDT({
-    req(filtered_data())
-    datatable(filtered_data(), 
-              options = list(pageLength = 15, scrollX = TRUE, dom = 'tp'),
-              rownames = FALSE, selection = "single")
+    req(search_results())
+    datatable(
+      search_results(), 
+      filter = "top",
+      options = list(pageLength = 15, scrollX = TRUE, dom = 'tp'),
+      rownames = FALSE, 
+      selection = "single"
+    )
   })
   
   # Export Logic
   output$export_summary <- renderText({
-    req(filtered_data())
-    paste("Rows to export:", nrow(filtered_data()))
+    req(raw_vec())
+    print(raw_vec())
   })
   
   output$download_csv <- downloadHandler(
