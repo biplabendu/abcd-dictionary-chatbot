@@ -23,8 +23,9 @@ if (!file.exists(csv_filename)) {
 # Get Absolute Path and Initialize
 abs_path <- tools::file_path_as_absolute(csv_filename)
 source_python("python/backend.py") # Load the script
-res <- semantic_search("give variables of BMI")       # Run the init function
 
+# res <- semantic_search("give variables of BMI", data_path = "../../data/")       # Run the init function
+# res[[3]] |> length()
 # # --- UI HELPERS ---
 # unique_sources <- get_unique_values("source")
 # unique_types   <- get_unique_values("type_var")
@@ -125,7 +126,7 @@ server <- function(input, output, session) {
       # [UPDATED] Pass 'cutoff' instead of 'top_k'
       # Python returns a sorted DataFrame of all rows > cutoff
       
-      raw_vec(semantic_search(input$search_query))
+      raw_vec(semantic_search(input$search_query, data_path = "../../data")[[3]])
       # browser()
       raw_df <- dd |> 
         filter(
