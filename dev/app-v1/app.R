@@ -126,7 +126,7 @@ ui <- page_fillable(
 server <- function(input, output, session) {
   
   # Initialize with empty frame
-  search_results <- reactiveVal(data.frame(dd[1:40, ]))
+  search_results <- reactiveVal(data.frame(dd[0, ]))
   raw_vec = reactiveVal(NULL)
   
   observeEvent(input$run_search, {
