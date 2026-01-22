@@ -63,11 +63,11 @@ ui <- page_fillable(
                     placeholder = "e.g., bullying at school",
                     height = "150px"),
       
-      # [UPDATED] Similarity Cutoff Slider
-      sliderInput("cutoff", "Similarity Threshold:", 
-                  min = 0.0, max = 1.0, value = 0.25, step = 0.05),
+      # # [UPDATED] Similarity Cutoff Slider
+      # sliderInput("cutoff", "Similarity Threshold:", 
+      #             min = 0.0, max = 1.0, value = 0.25, step = 0.05),
       
-      helpText("Higher values = stricter matching. Lower values = more results."),
+      # helpText("Higher values = stricter matching. Lower values = more results."),
       
       actionButton("run_search", "Search", 
                    class = "btn-primary w-100", icon = icon("magnifying-glass"))
