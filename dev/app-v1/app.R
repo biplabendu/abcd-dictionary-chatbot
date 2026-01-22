@@ -1,9 +1,13 @@
 library(shiny)
 library(tidyverse)
 library(reticulate)
-library(DT)
+library(reactable)
 library(bslib)
 
+# use_python("/usr/bin/python3.10", required = TRUE)
+
+
+# options(shiny.autoreload = TRUE)
 # --- ENVIRONMENT CONFIG ---
 # source_python("python/backend.py") # Loaded below after path check
 
@@ -22,6 +26,7 @@ if (!file.exists(csv_filename)) {
 
 # Get Absolute Path and Initialize
 abs_path <- tools::file_path_as_absolute(csv_filename)
+# use_python(".venv/bin/python")
 source_python("python/backend.py") # Load the script
 
 # res <- semantic_search("give variables of BMI", data_path = "../../data/")       # Run the init function
@@ -33,8 +38,9 @@ source_python("python/backend.py") # Load the script
 
 # load dictionary ---------------------------------------------------------
 
-dd <- read.csv(
-  csv_filename
+dd <- readr::read_csv(
+  csv_filename,
+  col_types = readr::cols(.default = readr::col_character())
 )
 
 # --- UI ---
@@ -45,18 +51,21 @@ ui <- page_fillable(
     tags$style(HTML("
       .card { height: 100%; } 
       .form-group { margin-bottom: 15px; }
+      .no-gap { gap: 0 !important; }
     "))
   ),
   
   title = "ABCD Semantic Search",
   
-  layout_columns(
-    # col_widths = c(3, 6, 3),
-    col_widths = c(3, 9),
-    fill = TRUE,
+  div(
+    class = "bg-primary text-white p-3 rounded-2",
+    h2("ABCD Data Dictionary Semantic Search", class = "m-0")
+  ),
+  
+  layout_sidebar(
     
-    # --- LEFT: SEARCH INPUT ---
-    card(
+    sidebar = sidebar(
+      width = 300,
       card_header("Search Parameters"),
       
       textAreaInput("search_query", "Describe what you are looking for:", 
@@ -64,22 +73,39 @@ ui <- page_fillable(
                     height = "150px"),
       
       # # [UPDATED] Similarity Cutoff Slider
-      # sliderInput("cutoff", "Similarity Threshold:", 
-      #             min = 0.0, max = 1.0, value = 0.25, step = 0.05),
+      sliderInput("cutoff", "Similarity Threshold:", 
+                  min = 0.2, max = 1.0, value = 0.25, step = 0.05),
       
       # helpText("Higher values = stricter matching. Lower values = more results."),
       
       actionButton("run_search", "Search", 
                    class = "btn-primary w-100", icon = icon("magnifying-glass"))
     ),
-    
-    # --- MIDDLE: RESULTS ---
-    card(
-      full_screen = TRUE, 
       navset_card_tab(
         nav_panel(
           "Explore",
-          DTOutput("results_table", height = "100%") 
+          card(
+            full_screen = TRUE,
+            layout_sidebar(
+              class = "no-gap",
+              sidebar = sidebar(
+                position = "right",
+                open = "closed",
+                card_header("Table Options"),
+                helpText("Add filters or settings here."),
+                actionButton(
+                  "delete_selected_rows",
+                  "Delete Selected Rows",
+                  class = "btn-danger w-100"
+                )
+              ),
+              div(
+                reactableOutput("results_table", width = "100%"),
+                div(class = "text-muted small p-2", textOutput("table_counts"))
+              ),
+              fill = TRUE
+            )
+          ),
         ),
         nav_panel(
           "Export",
@@ -91,21 +117,8 @@ ui <- page_fillable(
             verbatimTextOutput("export_summary")
           )
         )
-      )
-    )
-    
-    # # --- RIGHT: FILTERS ---
-    # card(
-    #   card_header("Refine Results"),
-    #   div(
-    #     style = "overflow-y: auto; max-height: 80vh;", 
-    #     checkboxGroupInput("filter_source", "Filter by Source:",
-    #                        choices = unique_sources, selected = unique_sources),
-    #     hr(),
-    #     checkboxGroupInput("filter_type", "Filter by Type:",
-    #                        choices = unique_types, selected = unique_types)
-    #   )
-    # )
+      ),
+    fill = TRUE
   )
 )
 
@@ -113,7 +126,7 @@ ui <- page_fillable(
 server <- function(input, output, session) {
   
   # Initialize with empty frame
-  search_results <- reactiveVal(data.frame())
+  search_results <- reactiveVal(data.frame(dd[1:40, ]))
   raw_vec = reactiveVal(NULL)
   
   observeEvent(input$run_search, {
@@ -125,13 +138,14 @@ server <- function(input, output, session) {
     tryCatch({
       # [UPDATED] Pass 'cutoff' instead of 'top_k'
       # Python returns a sorted DataFrame of all rows > cutoff
+      res <- semantic_search("BMI", data_path = "../../data", cutoff = isolate(input$cutoff))
+      # raw_vec(semantic_search(input$search_query, data_path = "../../data")[[3]])
       
-      raw_vec(semantic_search(input$search_query, data_path = "../../data")[[3]])
-      # browser()
-      raw_df <- dd |> 
-        filter(
-          label %in% raw_vec()
-        )
+      raw_df <- dd[res[[2]] + 1, ] |> 
+        mutate(
+          similarity = round(res[[1]], 3)
+        ) |> 
+          relocate(similarity, name, label)
       
       # raw_df <- semantic_search(input$search_query, cutoff = input$cutoff)
       
@@ -152,15 +166,43 @@ server <- function(input, output, session) {
 
   
   # Output Table
-  output$results_table <- renderDT({
+  output$results_table <- reactable::renderReactable({
     req(search_results())
-    datatable(
-      search_results(), 
-      filter = "top",
-      options = list(pageLength = 15, scrollX = TRUE, dom = 'tp'),
-      rownames = FALSE, 
-      selection = "single"
+    reactable::reactable(
+      search_results(),
+      # defaultColDef = reactable::colDef(minWidth = 150),
+      columns = list(
+        label = reactable::colDef(minWidth = 450),
+        table_label = reactable::colDef(minWidth = 280),
+        name = reactable::colDef(minWidth = 200)
+      ),
+      selection = "multiple",
+      searchable = TRUE,
+      filterable = TRUE,
+      pagination = FALSE,
+      highlight = TRUE,
+      bordered = TRUE,
+      striped = TRUE,
+      height = "70vh"
     )
+  })
+
+  observeEvent(input$delete_selected_rows, {
+    selected <- reactable::getReactableState("results_table", "selected")
+    if (is.null(selected) || length(selected) == 0) {
+      showNotification("No rows selected.", type = "warning")
+      return()
+    }
+
+    updated <- search_results()
+    updated <- updated[-selected, , drop = FALSE]
+    search_results(updated)
+    showNotification("Selected rows deleted.", type = "message")
+  })
+
+  output$table_counts <- renderText({
+    req(search_results())
+    paste("Rows:", nrow(search_results()), "| Columns:", ncol(search_results()))
   })
   
   # Export Logic
