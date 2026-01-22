@@ -4,10 +4,10 @@ library(reticulate)
 library(reactable)
 library(bslib)
 
-use_python("/usr/bin/python3.10", required = TRUE)
+# use_python("/usr/bin/python3.10", required = TRUE)
 
 
-options(shiny.autoreload = TRUE)
+# options(shiny.autoreload = TRUE)
 # --- ENVIRONMENT CONFIG ---
 # source_python("python/backend.py") # Loaded below after path check
 
