@@ -47,6 +47,10 @@ def semantic_search(search_string, data_path, domains_list=None, model_name="all
     Simulates: sentences_sorted[sims > cutoff]
     Calculates similarity for rows from the given domains, filters by cutoff, and sorts.
     """
+    data_path = Path(data_path).resolve()
+    print(f"Data path: {data_path}")
+    if not data_path.exists():
+        raise FileNotFoundError(f"Data path {data_path} does not exist")
 
     if model_name in SUPPORTED_MODELS:
         model = SentenceTransformer(f"sentence-transformers/{model_name}")
@@ -60,16 +64,16 @@ def semantic_search(search_string, data_path, domains_list=None, model_name="all
         
     # if the domains list doesn't contain Imaging, then use the csv without imaging questions
     if  'Imaging' not in domains_list:
-        csv_path = Path(data_path) / "dd-abcd-6_0_minimal_noimag.csv"
+        csv_path = data_path / "dd-abcd-6_0_minimal_noimag.csv"
         embeddings_name = f"embeddings_{model_name}_noimag.npy"
     else:
-        csv_path = Path(data_path) / "dd-abcd-6_0_minimal.csv"
+        csv_path = data_path / "dd-abcd-6_0_minimal.csv"
         embeddings_name = f"embeddings_{model_name}.npy"
 
     df = pd.read_csv(csv_path)
     df = df.dropna(subset=["label"])
     # creating embeddings for the questions if they don't exist
-    embeddings_path = Path(data_path) / "local_embeddings"
+    embeddings_path = data_path / "local_embeddings"
     print(f"Checking if embeddings exist: {embeddings_path / embeddings_name}")
     if not (embeddings_path / embeddings_name).exists():
         embeddings = create_embeddings(df, model)
@@ -109,5 +113,7 @@ def sentence_search(df, domains_list, embeddings, search_embedding, cutoff=0.2):
 # if __name__ == "__main__":
 #     # when running from python the paths should work, otherwise you need to set the data path manually
 #     DATA_PATH = Path(sys.argv[0]).resolve().parent.parent.parent.parent / "data"
+#     # testing for relative path
+#     #DATA_PATH_REL = "../data"
 #     sims, sorted_index, sentences_sorted = semantic_search("variables to compute body mass index", data_path=DATA_PATH)
 #     print(sentences_sorted[:10])
