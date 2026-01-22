@@ -211,3 +211,4 @@ __marimo__/
 .Rproj.user
 .RData
 .Rhistory
+dev/app-v1/python_env/*
