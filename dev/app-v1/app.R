@@ -26,6 +26,7 @@ if (!file.exists(csv_filename)) {
 
 # Get Absolute Path and Initialize
 abs_path <- tools::file_path_as_absolute(csv_filename)
+# use_python(".venv/bin/python")
 source_python("python/backend.py") # Load the script
 
 # res <- semantic_search("give variables of BMI", data_path = "../../data/")       # Run the init function
@@ -72,8 +73,8 @@ ui <- page_fillable(
                     height = "150px"),
       
       # # [UPDATED] Similarity Cutoff Slider
-      # sliderInput("cutoff", "Similarity Threshold:", 
-      #             min = 0.0, max = 1.0, value = 0.25, step = 0.05),
+      sliderInput("cutoff", "Similarity Threshold:", 
+                  min = 0.2, max = 1.0, value = 0.25, step = 0.05),
       
       # helpText("Higher values = stricter matching. Lower values = more results."),
       
@@ -119,19 +120,6 @@ ui <- page_fillable(
       ),
     fill = TRUE
   )
-  
-  # # --- RIGHT: FILTERS ---
-  # card(
-  #   card_header("Refine Results"),
-  #   div(
-  #     style = "overflow-y: auto; max-height: 80vh;", 
-  #     checkboxGroupInput("filter_source", "Filter by Source:",
-  #                        choices = unique_sources, selected = unique_sources),
-  #     hr(),
-  #     checkboxGroupInput("filter_type", "Filter by Type:",
-  #                        choices = unique_types, selected = unique_types)
-  #   )
-  # )
 )
 
 # --- SERVER ---
@@ -150,13 +138,14 @@ server <- function(input, output, session) {
     tryCatch({
       # [UPDATED] Pass 'cutoff' instead of 'top_k'
       # Python returns a sorted DataFrame of all rows > cutoff
+      res <- semantic_search("BMI", data_path = "../../data", cutoff = isolate(input$cutoff))
+      # raw_vec(semantic_search(input$search_query, data_path = "../../data")[[3]])
       
-      raw_vec(semantic_search(input$search_query, data_path = "../../data")[[3]])
-      # browser()
-      raw_df <- dd |> 
-        filter(
-          label %in% raw_vec()
-        )
+      raw_df <- dd[res[[2]] + 1, ] |> 
+        mutate(
+          similarity = round(res[[1]], 3)
+        ) |> 
+          relocate(similarity, name, label)
       
       # raw_df <- semantic_search(input$search_query, cutoff = input$cutoff)
       
@@ -189,7 +178,7 @@ server <- function(input, output, session) {
       ),
       selection = "multiple",
       searchable = TRUE,
-      # filterable = TRUE,
+      filterable = TRUE,
       pagination = FALSE,
       highlight = TRUE,
       bordered = TRUE,
