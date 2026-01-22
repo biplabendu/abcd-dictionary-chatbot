@@ -138,7 +138,7 @@ server <- function(input, output, session) {
     tryCatch({
       # [UPDATED] Pass 'cutoff' instead of 'top_k'
       # Python returns a sorted DataFrame of all rows > cutoff
-      res <- semantic_search("BMI", data_path = "../../data", cutoff = isolate(input$cutoff))
+      res <- semantic_search(isolate(input$search_query), data_path = "../../data", cutoff = isolate(input$cutoff))
       # raw_vec(semantic_search(input$search_query, data_path = "../../data")[[3]])
       
       raw_df <- dd[res[[2]] + 1, ] |> 
