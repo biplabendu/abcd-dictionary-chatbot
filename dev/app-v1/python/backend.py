@@ -12,7 +12,10 @@ DOMAINS_LIST = ['ABCD (General)','COVID-19','Endocannabinoid','Friends, Family, 
 
 def create_embeddings(df, model, batch_size=64):
     """
-    Loads the CSV and pre-computes embeddings for the questions from the chosen csv file.
+    Pre-computes embeddings for questions contained in a pre-loaded pandas DataFrame.
+
+    The DataFrame is expected to have a 'label' column containing the text inputs
+    for which embeddings will be generated using the provided model.
     """
 
     # Load Data and get the sentences
