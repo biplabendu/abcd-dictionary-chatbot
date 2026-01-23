@@ -352,6 +352,7 @@ server <- function(input, output, session) {
   
   # --- 4. TABLE RENDER ---
   output$results_table <- reactable::renderReactable({
+    req(nrow(filtered_data()) > 0)
     data <- filtered_data()
     
     reactable::reactable(
