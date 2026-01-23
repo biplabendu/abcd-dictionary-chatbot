@@ -367,6 +367,7 @@ server <- function(input, output, session) {
       ),
       selection = "multiple",
       searchable = TRUE,
+      resizable = TRUE,
       filterable = TRUE,
       pagination = TRUE,
       highlight = TRUE,
