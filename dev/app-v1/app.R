@@ -257,7 +257,20 @@ server <- function(input, output, session) {
   observeEvent(input$run_search, {
     req(input$search_query)
     
-    # Visual Feedback
+    # --- [NEW] POP UP BOX LOGIC ---
+    # Show a modal, wait 1 second, then remove it
+    showModal(modalDialog(
+      title = NULL,
+      "Searching...", 
+      footer = NULL, 
+      size = "s", 
+      easyClose = FALSE
+    ))
+    Sys.sleep(1) # Keeps the box visible for 1 second
+    removeModal()
+    # ------------------------------
+    
+    # Visual Feedback (Spinner on button)
     updateActionButton(session, "run_search", label = "Searching...", icon = icon("spinner", class = "fa-spin"))
     on.exit({
       updateActionButton(session, "run_search", label = "Search Variables", icon = icon("magnifying-glass"))
@@ -288,7 +301,7 @@ server <- function(input, output, session) {
         } else {
           dd 
         }} %>% 
-        .[indices + 1, ] %>% 
+          .[indices + 1, ] %>% 
           mutate(similarity = round(similarities, 3)) %>% 
           mutate(across(where(is.character), ~ stringr::str_replace_all(.x, "[\r\n]+", " "))) %>%
           relocate(similarity, name, label)
