@@ -3,12 +3,18 @@ library(tidyverse)
 library(reticulate)
 library(reactable)
 library(bslib)
+library(fontawesome)
 
-# --- FILE SETUP & BACKEND INIT ---
-# (Preserving existing logic exactly as requested)
-csv_filename <- "dd-abcd-6_0_minimal_noimag.csv" 
+# --- ENVIRONMENT CONFIG ---
+# use_python("/usr/bin/python3.10", required = TRUE)
+options(shiny.autoreload = TRUE)
+
+# --- FILE SETUP ---
+# Update this to your ACTUAL file name (accepted from ui branch)
+csv_filename <- "../../data/dd-abcd-6_0.csv" 
 
 if (!file.exists(csv_filename)) {
+  # Fallback for testing if the user hasn't renamed the file yet
   if (file.exists("dd-abcd-6_0_minimal_noimag-dummy.csv")) {
     csv_filename <- "dd-abcd-6_0_minimal_noimag-dummy.csv"
   } else {
@@ -16,8 +22,11 @@ if (!file.exists(csv_filename)) {
   }
 }
 
+# Get Absolute Path and Initialize
 abs_path <- tools::file_path_as_absolute(csv_filename)
+# Source python script
 source_python("python/backend.py")
+# Initialize backend
 # initialize_backend(abs_path) 
 
 # Load dictionary for R-side lookups and filter population
@@ -26,16 +35,28 @@ dd <- readr::read_csv(
   col_types = readr::cols(.default = readr::col_character())
 )
 
-# --- PREPARE FILTER CHOICES ---
-# Extract unique sorted values for the UI
+# --- DATA PREP & CONFIG ---
+# 1. UI Filter Choices (from HEAD logic)
 choices_source <- unique(dd$source) %>% na.omit() %>% sort()
 choices_domain <- if("domain" %in% names(dd)) unique(dd$domain) %>% na.omit() %>% sort() else character(0)
+
+# 2. JS Button Config (from ui branch)
+table_all_cols <- c("similarity", names(dd))
+table_hidden_cols <- setdiff(table_all_cols, "name")
+table_hidden_cols_json <- jsonlite::toJSON(table_hidden_cols, auto_unbox = TRUE)
+
+# 3. Domain Logic (from ui branch)
+domain_all <- c(
+  'ABCD (General)','COVID-19','Endocannabinoid',
+  'Friends, Family, & Community','Genetics','Hurricane Irma',
+  'Imaging','Linked External Data','MR Spectroscopy','Mental Health',
+  'Neurocognition','Novel Technologies','Physical Health',
+  'Social Development','Substance Use')
 
 # --- UI ---
 ui <- page_fillable(
   theme = bs_theme(preset = "flatly"),
   
-  # Custom CSS for scrollable filter boxes and card heights
   tags$head(
     tags$style(HTML("
       .card { height: 100%; } 
@@ -72,29 +93,33 @@ ui <- page_fillable(
                     placeholder = "e.g., bullying at school, sleep disorders...",
                     height = "150px"),
       
+      # [MERGED] Slider with ui branch defaults (value = 0.3)
       sliderInput("cutoff", "Similarity Threshold:", 
-                  min = 0.2, max = 1.0, value = 0.25, step = 0.05),
+                  min = 0.2, max = 1.0, value = 0.3, step = 0.05),
       
       helpText("Higher values = stricter matching."),
       
-      # Search Button (Will update visually on click)
+      # [MERGED] Search Button + Model Selector from ui branch
       actionButton("run_search", "Search Variables", 
-                   class = "btn-primary w-100 mb-3", icon = icon("magnifying-glass")),
+                   class = "btn-primary w-100 mb-2", icon = icon("magnifying-glass")),
       
-      # [NEW] Explanatory Text
+      selectizeInput(
+        "choose_model",
+        "Choose your champion:",
+        choices = c("ChatBot Pro (no imaging)" = "no_img",
+                    "ChatBot Pro Max Ultra (all)" = "all"),
+        selected = "no_img",
+        multiple = FALSE
+      ),
+      
+      # [HEAD] Explanatory Text (Preserved for UX)
       div(
         class = "small text-muted border-top pt-3",
         tags$h6("Capabilities:", class = "fw-bold"),
         tags$ul(
           class = "ps-3",
-          tags$li("Finds variables by meaning (e.g., 'sadness' finds 'depression')."),
-          tags$li("Filters results by similarity score.")
-        ),
-        tags$h6("Limitations:", class = "fw-bold"),
-        tags$ul(
-          class = "ps-3",
-          tags$li("Not a Q&A chatbot; returns raw dictionary entries."),
-          tags$li("Results depend on the quality of variable descriptions.")
+          tags$li("Finds variables by meaning."),
+          tags$li("Filters by similarity score.")
         )
       )
     ),
@@ -111,28 +136,48 @@ ui <- page_fillable(
             # --- RIGHT SIDEBAR (Filters & Actions) ---
             sidebar = sidebar(
               position = "right",
-              open = "open",  # [NEW] Open by default
+              open = "open", 
               width = 350,
               card_header("Refine Results"),
               
-              # 1. Delete Button
+              # 1. Action Buttons (Merged HEAD delete with ui Download/Hide)
               div(
-                class = "mb-4 border-bottom pb-3",
+                class = "mb-4 border-bottom pb-3 d-flex flex-column gap-2",
                 h6("Actions", class = "fw-bold text-uppercase text-secondary small"),
+                
+                # Delete Row (HEAD)
                 actionButton(
                   "delete_selected_rows",
                   "Delete Selected Rows",
                   class = "btn-outline-danger w-100",
                   icon = icon("trash")
+                ),
+                
+                # Download CSV (JS Version from ui)
+                tags$button(
+                  tagList(fontawesome::fa("download"), "Download as CSV"),
+                  class = "btn btn-success w-100",
+                  onclick = "(function(){var state=Reactable.getState('results_table')||{};var hidden=state.hiddenColumns||[];var all=state.columns?state.columns.map(function(c){return c.id;}):Object.keys((state.data&&state.data[0])||{});var visible=all.filter(function(id){return hidden.indexOf(id)===-1;});Reactable.downloadDataCSV('results_table','search_results.csv',{columnIds:visible});})()"
+                ),
+                
+                # Show only name (JS Version from ui)
+                tags$button(
+                  "Show only name column",
+                  class = "btn btn-secondary w-100",
+                  onclick = paste0(
+                    "Reactable.setHiddenColumns('results_table', function(prevColumns) { ",
+                    "return prevColumns.length === 0 ? ",
+                    table_hidden_cols_json,
+                    " : [] })"
+                  )
                 )
               ),
               
-              # 2. Filters (Accordion style)
+              # 2. Filters (HEAD - Preserved as requested)
               h6("Filters", class = "fw-bold text-uppercase text-secondary small"),
               accordion(
-                open = c("Source", "Domain"), # Open panels by default
+                open = c("Source", "Domain"), 
                 
-                # SOURCE FILTER
                 accordion_panel(
                   "Source",
                   div(class = "filter-actions",
@@ -147,7 +192,6 @@ ui <- page_fillable(
                   )
                 ),
                 
-                # DOMAIN FILTER
                 accordion_panel(
                   "Domain",
                   div(class = "filter-actions",
@@ -173,15 +217,29 @@ ui <- page_fillable(
           )
         )
       ),
+      
+      # [MERGED] Additional Info Tab from ui branch
       nav_panel(
-        "Export",
+        "Additional Info",
         div(
           class = "p-3",
-          h4("Download Data"),
-          p("Download the filtered dataset currently shown in the Explore tab."),
-          downloadButton("download_csv", "Download CSV", class = "btn-success"),
-          br(), br(),
-          verbatimTextOutput("export_summary")
+          h5("Load results and create dataset in NBDCtools"),
+          tags$pre(
+            tags$code(
+              paste(
+                "library(readr)",
+                "library(NBDCtools)",
+                "",
+                "search_results <- read_csv('search_results.csv')",
+                "data <- create_dataset(",
+                "  study = 'abcd',",
+                "  data_dir = '<Path To Your Raw Data>',",
+                "  vars = search_results$name",
+                ")",
+                sep = "\n"
+              )
+            )
+          )
         )
       )
     ),
@@ -193,36 +251,41 @@ ui <- page_fillable(
 server <- function(input, output, session) {
   
   # Store the "Master" search result (before manual filtering)
-  # Initialize empty, using dd structure
   master_results <- reactiveVal(dd[0, ])
   
   # --- 1. SEARCH EVENT ---
   observeEvent(input$run_search, {
     req(input$search_query)
     
-    # [VISUAL FEEDBACK]
+    # Visual Feedback
     updateActionButton(session, "run_search", label = "Searching...", icon = icon("spinner", class = "fa-spin"))
     on.exit({
       updateActionButton(session, "run_search", label = "Search Variables", icon = icon("magnifying-glass"))
     })
     
     tryCatch({
-      # Call Python Backend (No changes to this logic)
+      
+      # [MERGED] Call Python Backend with 'domains_list' logic from ui branch
       res <- semantic_search(
         isolate(input$search_query), 
-        data_path = "../../data", # Assuming this path is correct for your environment
-        cutoff = isolate(input$cutoff)
+        data_path = "../../data", 
+        cutoff = isolate(input$cutoff),
+        domains_list = if (isolate(input$choose_model) == "no_img") {
+          NULL
+        } else {
+          domain_all
+        }
       )
       
-      # Python returns tuple: (similarities, indices, sentences)
-      # Reconstruct DataFrame using R-side 'dd' object
+      # [MERGED] Result processing from ui branch (Indices + String cleanup)
       indices <- res[[2]]
       similarities <- res[[1]]
       
       if (length(indices) > 0) {
-        # Extract rows using 1-based indexing
+        # Extract rows (Python 0-based index -> R 1-based index)
         raw_df <- dd[indices + 1, ] %>% 
           mutate(similarity = round(similarities, 3)) %>% 
+          mutate(across(where(is.character), ~ stringr::str_replace_all(.x, "[\r\n]+", " "))) %>%
           relocate(similarity, name, label)
         
         master_results(raw_df)
@@ -240,21 +303,19 @@ server <- function(input, output, session) {
   })
   
   # --- 2. FILTERING LOGIC ---
-  # Applies manual filters (Right Sidebar) to the Master Search Results
   filtered_data <- reactive({
     data <- master_results()
     
     if (nrow(data) == 0) return(data)
     
-    # Apply Source Filter
+    # Source Filter
     if (!is.null(input$filter_source)) {
       data <- data %>% filter(source %in% input$filter_source)
     } else {
-      # If nothing selected, show nothing
       return(data[0,])
     }
     
-    # Apply Domain Filter (if column exists)
+    # Domain Filter
     if ("domain" %in% names(data) && !is.null(input$filter_domain)) {
       data <- data %>% filter(domain %in% input$filter_domain)
     } else if ("domain" %in% names(data)) {
@@ -264,7 +325,7 @@ server <- function(input, output, session) {
     data
   })
   
-  # --- 3. HELPER EVENTS (Select All/None) ---
+  # --- 3. HELPER EVENTS ---
   observeEvent(input$all_source, updateCheckboxGroupInput(session, "filter_source", selected = choices_source))
   observeEvent(input$none_source, updateCheckboxGroupInput(session, "filter_source", selected = character(0)))
   
@@ -273,11 +334,11 @@ server <- function(input, output, session) {
   
   # --- 4. TABLE RENDER ---
   output$results_table <- reactable::renderReactable({
-    # Use filtered data
     data <- filtered_data()
     
     reactable::reactable(
       data,
+      elementId = "results_table", # Required for JS Download button
       columns = list(
         label = reactable::colDef(minWidth = 450, name = "Description"),
         name = reactable::colDef(minWidth = 200, name = "Variable Name"),
@@ -308,11 +369,9 @@ server <- function(input, output, session) {
       return()
     }
     
-    # Identify the specific variable names to remove from the view
     current_view <- filtered_data()
     vars_to_remove <- current_view$name[selected_indices]
     
-    # Update the MASTER list (so they stay deleted even if filters change)
     current_master <- master_results()
     new_master <- current_master %>% filter(!name %in% vars_to_remove)
     
@@ -324,16 +383,6 @@ server <- function(input, output, session) {
   output$table_counts <- renderText({
     paste("Showing", nrow(filtered_data()), "variables")
   })
-  
-  # Debug/Summary for Export tab
-  output$export_summary <- renderText({
-    paste("Ready to export", nrow(filtered_data()), "rows.")
-  })
-  
-  output$download_csv <- downloadHandler(
-    filename = function() { paste("search_results_", Sys.Date(), ".csv", sep = "") },
-    content = function(file) { write.csv(filtered_data(), file, row.names = FALSE) }
-  )
 }
 
 shinyApp(ui, server)
