@@ -13,3 +13,5 @@ Currently available resources for exploring the data dictionary
 
 ## Running the App locally
 If you want to run the App locally, please follow the instructions [here](https://github.com/biplabendu/abcd-dictionary-chatbot/blob/main/dev/app-v1/README.md).
+
+In the future we will also provide a container.
