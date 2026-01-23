@@ -3,7 +3,7 @@
 ## Please help us improve the chatbot!
 - Leave feedback / suggestions or report issues: https://docs.google.com/spreadsheets/d/1b3WRut9ys3JsjWrt0_cNq0yb_NjCMLW19fO4l771eBQ/edit?usp=sharing
 
-## 20 January, 2026
+## Resources
 Currently available resources for exploring the data dictionary
 
 - Public link to explore the ABCD data dictionary: https://abcd.deapscience.com/#/my-datasets/create-dataset
