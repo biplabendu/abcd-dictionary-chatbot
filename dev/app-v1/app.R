@@ -3,17 +3,18 @@ library(tidyverse)
 library(reticulate)
 library(reactable)
 library(bslib)
+library(fontawesome)
 
-# use_python("/usr/bin/python3.10", required = TRUE)
+use_python("/usr/bin/python3.10", required = TRUE)
 
 
-# options(shiny.autoreload = TRUE)
+options(shiny.autoreload = TRUE)
 # --- ENVIRONMENT CONFIG ---
 # source_python("python/backend.py") # Loaded below after path check
 
 # --- FILE SETUP ---
 # Update this to your ACTUAL file name (no dummy)
-csv_filename <- "dd-abcd-6_0_minimal_noimag.csv" 
+csv_filename <- "../../data/dd-abcd-6_0.csv" 
 
 if (!file.exists(csv_filename)) {
   # Fallback for testing if the user hasn't renamed the file yet
@@ -42,6 +43,17 @@ dd <- readr::read_csv(
   csv_filename,
   col_types = readr::cols(.default = readr::col_character())
 )
+
+table_all_cols <- c("similarity", names(dd))
+table_hidden_cols <- setdiff(table_all_cols, "name")
+table_hidden_cols_json <- jsonlite::toJSON(table_hidden_cols, auto_unbox = TRUE)
+
+domain_all <- c(
+  'ABCD (General)','COVID-19','Endocannabinoid',
+  'Friends, Family, & Community','Genetics','Hurricane Irma',
+  'Imaging','Linked External Data','MR Spectroscopy','Mental Health',
+  'Neurocognition','Novel Technologies','Physical Health',
+  'Social Development','Substance Use')
 
 # --- UI ---
 ui <- page_fillable(
@@ -74,12 +86,20 @@ ui <- page_fillable(
       
       # # [UPDATED] Similarity Cutoff Slider
       sliderInput("cutoff", "Similarity Threshold:", 
-                  min = 0.2, max = 1.0, value = 0.25, step = 0.05),
+                  min = 0.2, max = 1.0, value = 0.3, step = 0.05),
       
       # helpText("Higher values = stricter matching. Lower values = more results."),
       
       actionButton("run_search", "Search", 
-                   class = "btn-primary w-100", icon = icon("magnifying-glass"))
+                   class = "btn-primary w-100", icon = icon("magnifying-glass")),
+      selectizeInput(
+        "choose_model",
+        "Choose your champion:",
+        choices = c("ChatBot Pro (no imaging)" = "no_img",
+                    "ChatBot Pro Max Ultra (all)" = "all"),
+        selected = "no_img",
+        multiple = FALSE
+      )
     ),
       navset_card_tab(
         nav_panel(
@@ -97,6 +117,21 @@ ui <- page_fillable(
                   "delete_selected_rows",
                   "Delete Selected Rows",
                   class = "btn-danger w-100"
+                ),
+                tags$button(
+                  tagList(fontawesome::fa("download"), "Download as CSV"),
+                  class = "btn btn-success w-100",
+                  onclick = "(function(){var state=Reactable.getState('results_table')||{};var hidden=state.hiddenColumns||[];var all=state.columns?state.columns.map(function(c){return c.id;}):Object.keys((state.data&&state.data[0])||{});var visible=all.filter(function(id){return hidden.indexOf(id)===-1;});Reactable.downloadDataCSV('results_table','search_results.csv',{columnIds:visible});})()"
+                ),
+                tags$button(
+                  "Show only name column",
+                  class = "btn btn-secondary w-100",
+                  onclick = paste0(
+                    "Reactable.setHiddenColumns('results_table', function(prevColumns) { ",
+                    "return prevColumns.length === 0 ? ",
+                    table_hidden_cols_json,
+                    " : [] })"
+                  )
                 )
               ),
               div(
@@ -108,13 +143,26 @@ ui <- page_fillable(
           ),
         ),
         nav_panel(
-          "Export",
+          "Additional Info",
           div(
             class = "p-3",
-            h4("Download Data"),
-            downloadButton("download_csv", "Download CSV", class = "btn-success"),
-            br(), br(),
-            verbatimTextOutput("export_summary")
+            h5("Load results and create dataset in NBDCtools"),
+            tags$pre(
+              tags$code(
+                paste(
+                  "library(readr)",
+                  "library(NBDCtools)",
+                  "",
+                  "search_results <- read_csv('search_results.csv')",
+                  "data <- create_dataset(",
+                  "  study = 'abcd',",
+                  "  data_dir = '<Path To Your Raw Data>',",
+                  "  vars = search_results$name",
+                  ")",
+                  sep = "\n"
+                )
+              )
+            )
           )
         )
       ),
@@ -138,15 +186,25 @@ server <- function(input, output, session) {
     tryCatch({
       # [UPDATED] Pass 'cutoff' instead of 'top_k'
       # Python returns a sorted DataFrame of all rows > cutoff
-      res <- semantic_search(isolate(input$search_query), data_path = "../../data", cutoff = isolate(input$cutoff))
+      res <- semantic_search(
+        isolate(input$search_query), 
+        data_path = "../../data", 
+        cutoff = isolate(input$cutoff),
+        domains_list = if (isolate(input$choose_model) == "no_img") {
+            NULL
+          } else {
+            domain_all
+          }
+      )
       # raw_vec(semantic_search(input$search_query, data_path = "../../data")[[3]])
-      
       raw_df <- dd[res[[2]] + 1, ] |> 
         mutate(
           similarity = round(res[[1]], 3)
         ) |> 
+        mutate(across(where(is.character), ~ stringr::str_replace_all(.x, "[\r\n]+", " "))) |> 
           relocate(similarity, name, label)
       
+      print(names(raw_df))
       # raw_df <- semantic_search(input$search_query, cutoff = input$cutoff)
       
       if (!is.null(raw_df) && is.data.frame(raw_df)) {
@@ -170,6 +228,7 @@ server <- function(input, output, session) {
     req(search_results())
     reactable::reactable(
       search_results(),
+      elementId = "results_table",
       # defaultColDef = reactable::colDef(minWidth = 150),
       columns = list(
         label = reactable::colDef(minWidth = 450),
