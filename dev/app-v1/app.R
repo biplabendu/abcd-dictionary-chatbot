@@ -282,8 +282,13 @@ server <- function(input, output, session) {
       similarities <- res[[1]]
       
       if (length(indices) > 0) {
-        # Extract rows (Python 0-based index -> R 1-based index)
-        raw_df <- dd[indices + 1, ] %>% 
+        # Extract rows (Python 0-based index -> R 1-based index
+        raw_df <- {if (isolate(input$choose_model) == "no_img") {
+          dd |> filter(!domain %in% c('Imaging'))
+        } else {
+          dd 
+        }} %>% 
+        .[indices + 1, ] %>% 
           mutate(similarity = round(similarities, 3)) %>% 
           mutate(across(where(is.character), ~ stringr::str_replace_all(.x, "[\r\n]+", " "))) %>%
           relocate(similarity, name, label)
