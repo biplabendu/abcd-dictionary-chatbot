@@ -1,12 +1,31 @@
 # Running it on your computer
 
-This section describes how to run the application on your local machine after cloning the repository.
+This section describes how to run the application on your local machine.
 
 > The instructions below were tested on macOS (OSX).
 
+
+## Getting the repository
+
+You can obtain the repository by cloning it from GitHub:
+
+```
+git clone https://github.com/biplabendu/abcd-dictionary-chatbot
+```
+
+### Alternative: Download as a ZIP
+
+If you prefer not to use Git, you can download the repository as a ZIP file:
+
+1. Go to the repository page: https://github.com/biplabendu/abcd-dictionary-chatbot
+2. Click the Code button.
+3. Select Download ZIP.
+4. Extract the ZIP archive to a location of your choice.
+
+
 ## Software requirements
 
-This application uses both R and Python, so you will need to install and configure dependencies for both environments.
+**This application uses both R and Python, so you will need to install and configure dependencies for both environments.**
 
 ### R setup
 
@@ -27,13 +46,14 @@ Instructions are provided for both options below — **you only need to follow o
 
    From your terminal, move to the application directory:
    ```
-   cd dev/app-v1
+   cd abcd-dictionary-chatbot/dev/app-v1
    ```
 3. Start the `R` interpreter
 
    ```
    R
    ```
+   **Note:** If you see "Error: could not find function "install.package"", you should try running `install.packages("renv")`
 
 4. Install required `R` packages:
 
@@ -79,7 +99,7 @@ Your system likely already has Python installed. You can verify this by checking
 
    From your terminal, move to the application directory:
    ```
-   cd dev/app-v1
+   cd abcd-dictionary-chatbot/dev/app-v1
    ```
    
 3. Create a Python virtual environment
