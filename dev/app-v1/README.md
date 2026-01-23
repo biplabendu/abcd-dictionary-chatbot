@@ -1,31 +1,119 @@
 # Running it on your computer
 
-Once you have cloned the repo on your local computer, use the following instructions to run the app locally.
+This section describes how to run the application on your local machine after cloning the repository.
 
-> Instructions below are based on a Mac running 
+> The instructions below were tested on macOS (OSX).
 
-# Version requirements
+## Software requirements
 
-- R version 4.5 and above [download here](https://cran.rstudio.com/)
-- Rstudio version XX and above [download here](https://posit.co/download/rstudio-desktop/)
-- python3
-   - check if python3 is installed by typing `which python3` in terminal
+This application uses both R and Python, so you will need to install and configure dependencies for both environments.
 
-## Steps to install necessary R and python libraries
+### R setup
 
-* Install R packages
-   * Double click the `app-v1.Rproj` file
-   * Run `renv::restore()` to install necessary packages
+You can run the R components using either:
+- the R command-line interface (CLI), or
+- RStudio.
 
-* Install python libraries
-    * Create a virtual env
-       * `python3 -m venv python_env`
-    * Activate the virtual env
-       * `source python_env/bin/activate`
-    * Install the libraries
-       * `pip install -r requirements.txt`
+Instructions are provided for both options below — **you only need to follow one**.
+
+
+#### Option A: R Command Line Interface (CLI)
+
+1. Install R
+
+   If R is not already installed, download and install R version 4.5 or above from [this page](https://cran.rstudio.com/)
+
+2. Navigate to the app directory
+
+   From your terminal, move to the application directory:
+   ```
+   cd dev/app-v1
+   ```
+3. Start the `R` interpreter
+
+   ```
+   R
+   ```
+
+4. Install required `R` packages:
+
+   Inside the `R` session, restore the project environment using renv:
+   ```R
+   renv::restore()
+   ```   
+   This will install all required R dependencies defined for the project.
+
+#### Option B: RStudio (alternative)
+If you prefer to use RStudio:
+
+1. Install R
+
+   If R is not already installed, download and install R version 4.5 or above from [this page](https://cran.rstudio.com/)
+
+2. Install `Rstudio`
+
+   Install `Rstudio` from [here](https://posit.co/download/rstudio-desktop/)
+
+3. Open `Rstudio`
+
+4. Open the app in `Rstudio`
+
+   Double click the `app-v1.Rproj` file
+
+5.  Run `renv::restore()` to install necessary packages
+
+
+### Python setup
+
+Your system likely already has Python installed. You can verify this by checking the Python executable and version in your terminal.
+
+1. Check the Python installation
+
+   ```
+   which python # should return a path
+   python --version
+   ```
+   The Python version should be 3.11 or newer. If you don't have `Python`, download and install from [here](https://www.python.org/downloads/).
+
+2. Navigate to the app directory
+
+   From your terminal, move to the application directory:
+   ```
+   cd dev/app-v1
+   ```
+   
+3. Create a Python virtual environment
+
+   Create and activate a Python virtual environment, then install the required packages:
+   ```
+   python3 -m venv python_env
+   source python_env/bin/activate
+   pip install -r requirements.txt
+   ```
 
 ## Run the app locally
-* Re-open the R project, double-click the `app-v1.Rproj` file
-* Open the `app.R` file 
-* Click `Run App` at the top-right of the R script
+You can run the application locally using either the `R` command-line interface (CLI) or `RStudio`.
+
+### Option A: R Command Line Interface (CLI)
+
+1. Start the `R` interpreter from the application directory:
+
+   ```
+   R
+   ```
+2. Run the app in the R interpreter:
+
+   ```R
+   shiny::runApp()
+   ```
+
+### Option B: RStudio
+1. Open `RStudio`.
+2. Double-click the `app-v1.Rproj` file to open the project.
+3. Open the `app.R` file.
+4. Click Run App in the top-right corner of the script editor.
+
+### Notes
+
+- Ensure that all R and Python dependencies have been installed before running the app.
+- The application will open in a web browser once it starts.
