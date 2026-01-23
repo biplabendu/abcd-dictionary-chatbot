@@ -11,4 +11,5 @@ Currently available resources for exploring the data dictionary
 - Actual data (dictionary) available in a public repository: https://github.com/nbdc-datahub/NBDCtoolsData/tree/main/data
 - Reference for the above data: https://software.nbdc-datahub.org/NBDCtools/reference/get_dd.html
 
-
+## Running the App locally
+If you want to run the App locally, please follow the instructions [here](https://github.com/biplabendu/abcd-dictionary-chatbot/blob/main/dev/app-v1/README.md).
